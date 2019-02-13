@@ -1,6 +1,10 @@
 #ifndef TypesH
 #define TypesH
 
+#include <unordered_set>
+#include <unordered_map>
+#include <memory>
+
 #include "Flags.h"
 #include "UInts.h"
 #include "..\PCAP_DiskIO\PCAP_Common.h"
@@ -127,13 +131,20 @@ public:
 
 typedef std::vector<EndPointExt> EPParams;
 
+// types for hash search of fragments
+typedef std::unordered_set<uint32_t> SecMap;
+typedef std::shared_ptr<SecMap> SecMapSPtr;
+typedef std::unordered_map<std::string, SecMapSPtr> FoundPoints;
+
 struct Answer
 {
   EndPoint SRC;
   EndPoint DST;
   Flags16(SessionResult) flags;
   uint64_t pacnum = 0;
-
+  uint32_t sec = 0;
+  uint32_t nanosec = 0;
+  
   bool operator<(const Answer& other) const
   {
     if (SRC < other.SRC) return true;
@@ -180,6 +191,15 @@ struct Answer
     str = "pacnum_" + std::to_string(pacnum);
     return pacnum > 0;
   }
+
+  inline std::vector<uint32_t> getDottedSecInterval() const {
+    static uint32_t timeoutLimit = 2;
+    std::vector<uint32_t> res;
+
+    for (uint32_t i = 0; i < (timeoutLimit << 1); ++i) res.push_back(sec + i - timeoutLimit);
+    
+    return res;
+  }
 };
 
 struct Request
@@ -194,5 +214,6 @@ struct Request
   uint64_t packetsCount = 0;
   uint64_t packetOffset = 0;
 };
+
 
 #endif // !TypesH

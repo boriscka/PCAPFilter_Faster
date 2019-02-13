@@ -3,6 +3,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
+#include <memory>
 
 #include "../PCAP_DiskIO/PCAP_Reader.h"
 #include "../PCAP_DiskIO/PCAP_Writer.h"
@@ -12,7 +13,7 @@
 
 bool  Finder::FindDirectTransportPackets = false;
 
-bool IsWrite(Request& request, const Answer& respone)
+inline bool IsWrite(Request& request, const Answer& respone)
 {
   if ((request.flags & SessionRequest::ContainsDesired_ContentData) || (request.flags & SessionRequest::ContainsDesired_ipV4Point)
       || (request.flags & SessionRequest::ContainsDesired_ipV4) || (request.flags & SessionRequest::ContainsDesired_Port))
@@ -89,6 +90,7 @@ bool IsWrite(Request& request, const Answer& respone)
   return false;
 }
 
+// slow function: restricted
 bool IsWrite(const Answer& Session, const Answer& respone)
 {
   if ((Session.SRC == respone.SRC && Session.DST == respone.DST
@@ -121,9 +123,15 @@ bool IsWrite(const Answer& Session, const Answer& respone)
   return false;
 }
 
+inline bool checkSegmentActuality(uint32_t secKey, const SecMapSPtr& secMap)
+{
+  return secMap ? (secMap->count(secKey) > 0) : false;
+}
+
+
 bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput, std::string FileNameOutput) {
   char Buffer[256 * 1024];
-  std::unordered_set<std::string> FoundPoints;
+  FoundPoints FoundPoints;
 
   // block of FIRST SEARCH: by requests, will find some segments and small packets, which is needed
   {
@@ -146,6 +154,8 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
           
       if (TrafficAnalysis(ReadOk, Buffer, request, response)) {
         response.pacnum = stat.counterPacketRead;
+        response.sec = Sec;
+        response.nanosec = NSec;
         // filter
         if (IsWrite(request, response)) {
           FoundPointSets.insert(response);
@@ -174,11 +184,22 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
     FoundPoints.rehash(FoundPointSets.size() * 5); // need size more in 4 times to define max hash buckets (for optimal hash space)
     std::string bufstr;
     for (const auto& point : FoundPointSets) {
-      if (point.getKeyIp(bufstr))         FoundPoints.insert(bufstr);
-      if (point.getReverseKeyIp(bufstr))  FoundPoints.insert(bufstr);
-      if (point.getKeyEP(bufstr))         FoundPoints.insert(bufstr);
-      if (point.getReverseKeyEP(bufstr))  FoundPoints.insert(bufstr);
-      if (point.getKeyPacketNumber(bufstr))  FoundPoints.insert(bufstr);
+      auto secsIts = point.getDottedSecInterval();
+      std::vector<std::string> keys;
+      if (point.getKeyIp(bufstr))           keys.push_back(bufstr);
+      if (point.getReverseKeyIp(bufstr))    keys.push_back(bufstr);
+      if (point.getKeyEP(bufstr))           keys.push_back(bufstr);
+      if (point.getReverseKeyEP(bufstr))    keys.push_back(bufstr);
+      if (point.getKeyPacketNumber(bufstr)) keys.push_back(bufstr);
+
+      for (const std::string& strKey: keys) {
+        auto it = FoundPoints.find(strKey);
+        if (it == FoundPoints.end()) {
+          auto res = FoundPoints.insert({ strKey,  SecMapSPtr(new SecMap) });
+          it = res.first;
+        }
+        it->second->insert(secsIts.begin(), secsIts.end());
+      }
     }
   }
     
@@ -210,11 +231,16 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
 
       if (TrafficAnalysis(ReadOk, Buffer, request, response, &dropsTransport, &dropsNetwork)) {
         response.pacnum = stat.counterPacketRead;
+        response.sec = Sec;
+        response.nanosec = NSec;
         std::string bufstr;
         bool hasSoEp = (response.getKeyEP(bufstr) && FoundPoints.count(bufstr) > 0);
+        const auto& foundEPTimeInterval = FoundPoints.find(bufstr);
         bool hasSoIpSeg = (response.getKeyIp(bufstr) && FoundPoints.count(bufstr) > 0);
+        const auto& foundIpTimeInterval = FoundPoints.find(bufstr);
         bool hasSoPacket = (response.getKeyPacketNumber(bufstr) && FoundPoints.count(bufstr) > 0);
-        if (hasSoPacket || hasSoIpSeg || (hasSoEp && !Finder::FindDirectTransportPackets))
+        if (hasSoPacket || (hasSoEp && (!Finder::FindDirectTransportPackets || checkSegmentActuality(response.sec, foundEPTimeInterval->second))) 
+                        || (hasSoIpSeg && checkSegmentActuality(response.sec, foundIpTimeInterval->second)))
         {
           ++stat.counterPacketWrite;
           Writer.Write(ReadOk, Buffer, Sec, NSec);

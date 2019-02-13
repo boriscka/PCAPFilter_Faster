@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# exclude directories
+/bin_ms64_2017/*
+/WorkDir/*
+/bin_ms64_2017
+/WorkDir

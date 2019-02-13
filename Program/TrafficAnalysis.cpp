@@ -27,18 +27,18 @@ namespace Ethernet
 #define   CONN_IP 0xff
 }
 
-bool isSomeEthernetProto(uint16_t proto)
+inline bool isSomeEthernetProto(uint16_t proto)
 {
   return proto == ETH_PUP || proto == ETH_SPRITE || proto == ETH_IP || proto == ETH_ARP || proto == ETH_REVARP || proto == ETH_AT
     || proto == ETH_AARP || proto == ETH_VLAN || proto == ETH_MPLS || proto == ETH_IPX || proto == ETH_IPV6 || proto == ETH_LOOPBACK;
 }
 
-bool isSomeConnectionProto(uint8_t proto)
+inline bool isSomeConnectionProto(uint8_t proto)
 {
   return proto == CONN_TCP || proto == CONN_UDP || proto == CONN_SCTP;
 }
 
-uint16_t getRightIndex(const char* originStr, const char* matchableStr, uint16_t matchableStrOffset)
+inline uint16_t getRightIndex(const char* originStr, const char* matchableStr, uint16_t matchableStrOffset)
 {
   for (uint16_t i = 0; i < matchableStrOffset; ++i)
   {
@@ -50,7 +50,7 @@ uint16_t getRightIndex(const char* originStr, const char* matchableStr, uint16_t
   return 0;
 }
 
-bool fastFindAnyValue(const char* data, uint64_t dataSize, const PCAP::StringParams& values)
+inline bool fastFindAnyValue(const char* data, uint64_t dataSize, const PCAP::StringParams& values)
 {
   uint64_t Size_find;
   uint64_t i, vi, viCur;
