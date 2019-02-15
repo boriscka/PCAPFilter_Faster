@@ -173,7 +173,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
       }
         
       // log
-      if (!(stat.counterPacketRead % 1000000))
+      if (!(stat.counterPacketRead % 10000000))
       {
         std::cout << "[READ] pacnum:  " << stat.counterPacketRead << ";" << std::endl
                   << "[READ] Writing found sessions (" << FoundPointSets.size() << ")..." << std::endl << std::flush;
@@ -181,42 +181,95 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
       }
     }
 
-    FoundPoints.rehash(FoundPointSets.size() * 5); // need size more in 4 times to define max hash buckets (for optimal hash space)
+    FoundPoints.rehash(FoundPointSets.size() * 10); // need size more in 5*2 times to define max hash buckets (for optimal hash space)
     std::string bufstr;
     for (const auto& point : FoundPointSets) {
-      auto secsIts = point.getDottedSecInterval();
       std::vector<std::string> keys;
       if (point.getKeyIp(bufstr))           keys.push_back(bufstr);
-      if (point.getReverseKeyIp(bufstr))    keys.push_back(bufstr);
+      //if (point.getReverseKeyIp(bufstr))    keys.push_back(bufstr);
       if (point.getKeyEP(bufstr))           keys.push_back(bufstr);
       if (point.getReverseKeyEP(bufstr))    keys.push_back(bufstr);
       if (point.getKeyPacketNumber(bufstr)) keys.push_back(bufstr);
 
+      SecMapSPtr sptr(new SecMap);
+      const auto & secsIts = point.getDottedSecInterval();
+      sptr->insert(secsIts.begin(), secsIts.end());
       for (const std::string& strKey: keys) {
-        auto it = FoundPoints.find(strKey);
-        if (it == FoundPoints.end()) {
-          auto res = FoundPoints.insert({ strKey,  SecMapSPtr(new SecMap) });
-          it = res.first;
+        if (FoundPoints.count(strKey) == 0) {
+          FoundPoints.insert({ strKey,  sptr });
         }
-        it->second->insert(secsIts.begin(), secsIts.end());
       }
     }
   }
-    
-  // block of SECOND SEARCH: will find remaining parts of segments and/or network sessions
+  
+  // ко второму пробегу выключаем лишний затратный поиск по контенту (оставляем только поиск по конечным точкам)
+  request.flags.SetFlag(SessionRequest::ContainsDesired_ContentData, false);
+
+  // block of SECOND SEARCH: will find remaining parts of ip segments for found transport sessions
   if (FoundPoints.size() > 0) {
     stat.counterPacketRead = 0;
     stat.counterPacketDropped = 0;
     std::cout << "[READ] Second step: " << std::endl << std::flush;
-    std::cout << "[READ] Writing found sessions (" << FoundPoints.size() << ")..." << std::endl << std::flush;
+    std::cout << "[UPDATE] Updating found sessions (" << FoundPoints.size() << ")..." << std::endl << std::flush;
+    PCAP::PCAP_Reader Reader(FileNameInput.c_str());
+    
+    while (!Reader.IsEOF()) {
+      Answer response;
+      uint32_t ReadOk, Sec, NSec;
+
+      Reader.Read(ReadOk, Buffer, Sec, NSec);
+      assert(ReadOk < sizeof(Buffer));
+      ++stat.counterPacketRead;
+
+      if (request.packetsCount != 0 && stat.counterPacketRead >(request.packetOffset + request.packetsCount)) break;
+      if (ReadOk == 0 || (request.packetOffset > 0 && request.packetOffset >= stat.counterPacketRead)) continue;
+
+      if (TrafficAnalysis(ReadOk, Buffer, request, response)) {
+        response.pacnum = stat.counterPacketRead;
+        response.sec = Sec;
+        response.nanosec = NSec;
+        std::string bufstr;
+        if (response.getKeyEP(bufstr) && FoundPoints.count(bufstr) > 0) {
+          if (!Finder::FindDirectTransportPackets || checkSegmentActuality(response.sec, FoundPoints.find(bufstr)->second)) {
+            // if ipkey will be generated then check for existing of ip segment key at hash map
+            if (response.getKeyIp(bufstr)) {
+              // response.getReverseKeyIp(bufstr) -- do not we need process it too?
+              bool isNewIt = false;
+              auto foundIpTimeInterval = FoundPoints.find(bufstr);
+
+              if (foundIpTimeInterval == FoundPoints.end()) {
+                foundIpTimeInterval = FoundPoints.insert({ bufstr,  SecMapSPtr(new SecMap) }).first;
+                isNewIt = true;
+              }
+              if (isNewIt || !checkSegmentActuality(response.sec, foundIpTimeInterval->second)) {
+                auto secsIts = response.getDottedSecInterval();
+                foundIpTimeInterval->second->insert(secsIts.begin(), secsIts.end());
+              }
+            }
+          }
+        }
+        if (!(stat.counterPacketRead % 10000000))
+        {
+          std::cout << "[READ] pacnum:  " << stat.counterPacketRead << ";" << std::endl
+            //<< "[WRITE] pacnum: " << stat.counterPacketWrite << ";" << std::endl 
+            << std::flush;
+        }
+        
+      }
+    }
+  }
+
+  // block of THIRD SEARCH: will find remaining parts of segments and/or network sessions
+  if (FoundPoints.size() > 0) {
+    stat.counterPacketRead = 0;
+    stat.counterPacketDropped = 0;
+    std::cout << "[READ] Third step: " << std::endl << std::flush;
+    std::cout << "[WRITE] Writing found sessions (" << FoundPoints.size() << ")..." << std::endl << std::flush;
     PCAP::PCAP_Reader Reader(FileNameInput.c_str());
     PCAP::PCAP_Writer Writer(FileNameOutput.c_str());
 
     TransportCounterMap dropsTransport;
     NetworkCounterMap dropsNetwork;
-        
-    // во втором пробеге выключаем лишний затратный поиск по контенту (оставляем только поиск по конечным точкам)
-    request.flags.SetFlag(SessionRequest::ContainsDesired_ContentData, false);
 
     while (!Reader.IsEOF()){
       Answer response;
@@ -245,7 +298,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
           ++stat.counterPacketWrite;
           Writer.Write(ReadOk, Buffer, Sec, NSec);
         }
-        if (!(stat.counterPacketRead % 1000000))
+        if (!(stat.counterPacketRead % 10000000))
         {
           std::cout << "[READ] pacnum:  " << stat.counterPacketRead << ";" << std::endl
             << "[WRITE] pacnum: " << stat.counterPacketWrite << ";" << std::endl << std::flush;

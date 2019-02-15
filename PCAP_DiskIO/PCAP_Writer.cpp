@@ -47,7 +47,7 @@ void PCAP_Writer::Open(const char *FullPath, TimeType type)
     Header.version_minor = 0x0004;
     Header.thiszone = 0x00000000;
     Header.sigfigs = 0x00000000;
-    Header.snaplen = 0x00040000;
+    Header.snaplen = 0x00000400; // 0x00040000
     Header.network = 0x00000001;
     if (out.is_open())
     {
