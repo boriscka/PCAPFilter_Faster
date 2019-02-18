@@ -14,10 +14,12 @@ struct Statistics
   uint64_t counterPacketRead;
   uint64_t counterPacketWrite;
   uint64_t counterPacketDropped;
+  uint64_t counterPacketAddedIpFrags;
   Statistics()
     :counterPacketRead(0)
     ,counterPacketWrite(0)
     ,counterPacketDropped(0)
+    ,counterPacketAddedIpFrags(0)
   { }
 };
 
@@ -57,7 +59,8 @@ enum class SessionRequest : uint16_t
   ContainsDesired_Port = 1 << 9,
   ContainsDesired_ContentData = 1 << 10,
   BothEP = 1 << 11,
-  ToWriteDrops = 1 << 12
+  ToWriteDrops = 1 << 12,
+  IpFragmentationOff = 1 << 13
 };
 
 struct EndPoint
@@ -193,10 +196,11 @@ struct Answer
   }
 
   inline std::vector<uint32_t> getDottedSecInterval() const {
-    static uint32_t timeoutLimit = 2;
+    static uint8_t timeoutLimitSec = 2;
     std::vector<uint32_t> res;
 
-    for (uint32_t i = 0; i < (timeoutLimit << 1); ++i) res.push_back(sec + i - timeoutLimit);
+    uint8_t rangeMax = (timeoutLimitSec << 1) | 1;
+    for (uint8_t i = 0; i < rangeMax; ++i) res.push_back(sec + i - timeoutLimitSec);
     
     return res;
   }
@@ -213,6 +217,9 @@ struct Request
 
   uint64_t packetsCount = 0;
   uint64_t packetOffset = 0;
+
+  uint32_t minSec = 0;
+  uint32_t maxSec = 0;
 };
 
 

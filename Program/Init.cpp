@@ -144,6 +144,8 @@ void InitParamParser(cmd_line::cmd_line_parser& parser)
   parser.InitParam("-drops", "", "<true|false>", "Whether to write dropped unknown packets in separated file.", false);
   parser.InitParam("-luck", "", "<true|false>", "don't search data by halfs into packets (for example, into segments)", false);
 
+  parser.InitParam("-ip-fragmentation-off", "", "<true|false>", "find ip fragments of not (by default is turned on)", false);
+
   parser.InitParam("-IPv4", "", "<IPv4 NO>[,<IPv4 NO>]*", "Only ip4 addreses (separated by commas).", false);
   parser.InitParam("-port", "", "<port NO>[,<port NO>]*", "Only SRC PORTs (separated by commas).", false);
   parser.InitParam("-eps", "", "<IPv4 NO>:<port NO>[,<IPv4 NO>:<port NO>]*", "find packets by end points (IPv4 and PORT), there are comma is separator.", false);
@@ -156,7 +158,8 @@ void InitParamParser(cmd_line::cmd_line_parser& parser)
   parser.InitParam("-count", "", "<count packets>", "Stop on <count> packets", false);
   parser.InitParam("-offset", "", "<count packets>", "Start from <offset> packet (-offset 1, it means search from second packet)", false);
 
-  parser.InitParam("-cut_by_count", "", "<count packets>", "Ñut the dump into pieces with the number of packages.", 0);
+  parser.InitParam("-min-secstamp", "", "<timestamp in seconds>", "Begin to find from <min-secstamp> second", false);
+  parser.InitParam("-max-secstamp", "", "<timestamp in seconds>", "End to find on <max-secstamp> second", false);
 }
 
 bool InitRequest(const cmd_line::cmd_line_parser & parser, Request & request)
@@ -169,6 +172,8 @@ bool InitRequest(const cmd_line::cmd_line_parser & parser, Request & request)
   request.flags |= parser.GetParam("-both_ep") ? SessionRequest::BothEP : SessionRequest::NONE;
   request.flags |= parser.GetParam("-drops") ? SessionRequest::ToWriteDrops : SessionRequest::NONE;
 
+  request.flags |= parser.GetParam("-ip-fragmentation-off") ? SessionRequest::IpFragmentationOff : SessionRequest::NONE;
+
   request.flags |= InitParamDataIPv4(parser, "-IPv4", request.addrsIp4) ? SessionRequest::ContainsDesired_ipV4 : SessionRequest::NONE;
   request.flags |= InitParamDataPort(parser, "-port", request.portsUdp) ? SessionRequest::ContainsDesired_Port : SessionRequest::NONE;
   request.flags |= InitParamDataIPv4Port(parser, "-eps", request.eps) ? SessionRequest::ContainsDesired_ipV4Point : SessionRequest::NONE;
@@ -180,6 +185,10 @@ bool InitRequest(const cmd_line::cmd_line_parser & parser, Request & request)
   uint64_t cntPckts = 0;
   request.packetsCount = parser.GetParam("-count", cntPckts) ? cntPckts : 0;
   request.packetOffset = parser.GetParam("-offset", cntPckts) ? cntPckts : 0;
+
+  uint64_t secs = 0;
+  request.minSec = parser.GetParam("-min-secstamp", secs) ? secs : 0;
+  request.maxSec = parser.GetParam("-max-secstamp", secs) ? secs : 0;
 
   if (request.flags.TestFlag(SessionRequest::ContainsDesired_ContentData))
   {
