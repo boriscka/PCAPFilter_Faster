@@ -139,6 +139,8 @@ typedef std::unordered_set<uint32_t> SecMap;
 typedef std::shared_ptr<SecMap> SecMapSPtr;
 typedef std::unordered_map<std::string, SecMapSPtr> FoundPoints;
 
+const uint8_t SEGMENT_INTERVAL_SEC_LIMIT = 2;
+
 struct Answer
 {
   EndPoint SRC;
@@ -148,7 +150,7 @@ struct Answer
   uint32_t sec = 0;
   uint32_t nanosec = 0;
   
-  bool operator<(const Answer& other) const
+  bool operator <(const Answer& other) const
   {
     if (SRC < other.SRC) return true;
     else if (other.SRC < SRC) return false;
@@ -196,11 +198,12 @@ struct Answer
   }
 
   inline std::vector<uint32_t> getDottedSecInterval() const {
-    static uint8_t timeoutLimitSec = 2;
     std::vector<uint32_t> res;
 
-    uint8_t rangeMax = (timeoutLimitSec << 1) | 1;
-    for (uint8_t i = 0; i < rangeMax; ++i) res.push_back(sec + i - timeoutLimitSec);
+    if (sec == 0) return res;
+
+    uint8_t rangeMax = (SEGMENT_INTERVAL_SEC_LIMIT << 1) | 1;
+    for (uint8_t i = 0; i < rangeMax; ++i) res.push_back(sec + i - SEGMENT_INTERVAL_SEC_LIMIT);
     
     return res;
   }

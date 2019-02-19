@@ -13,8 +13,9 @@
 
 bool  Finder::FindDirectTransportPackets = false;
 
-inline bool IsWrite(Request& request, const Answer& respone)
+inline bool IsWrite(const Request& request, const Answer& respone)
 {
+  if (request.minSec != 0 && request.minSec > respone.sec || request.maxSec != 0 && request.maxSec < respone.sec) return false;
   if ((request.flags & SessionRequest::ContainsDesired_ContentData) || (request.flags & SessionRequest::ContainsDesired_ipV4Point)
       || (request.flags & SessionRequest::ContainsDesired_ipV4) || (request.flags & SessionRequest::ContainsDesired_Port))
   {
@@ -26,18 +27,14 @@ inline bool IsWrite(Request& request, const Answer& respone)
     {
       bool isSrcFound = false;
       bool isDstFound = false;
-      for (auto& ep : request.eps)
+      for (const auto& ep : request.eps)
       {
         if (!isSrcFound && ep == respone.SRC)
         {
-          // for ip-fragments
-          ep.ipSegmentIdSrc = respone.SRC.ipSegmentId;
           isSrcFound = true;
         }
         if (!isDstFound && ep == respone.DST)
         {
-          // for ip-fragments
-          ep.ipSegmentIdDst = respone.DST.ipSegmentId;
           isDstFound = true;
         }
         if ((isSrcFound || isDstFound) && ((isSrcFound && isDstFound) || !(request.flags & SessionRequest::BothEP))) return true;
@@ -151,6 +148,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
       
       if (request.packetsCount != 0 && stat.counterPacketRead > (request.packetOffset + request.packetsCount)) break;
       if (ReadOk == 0 || (request.packetOffset > 0 && request.packetOffset >= stat.counterPacketRead)) continue;
+      if (request.minSec != 0 && Sec < request.minSec || request.maxSec != 0 && Sec > request.maxSec) continue;
           
       if (TrafficAnalysis(ReadOk, Buffer, request, response)) {
         response.pacnum = stat.counterPacketRead;
@@ -167,7 +165,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
           WriterDroppedPackets.Write(ReadOk, Buffer, Sec, NSec);
           if (!(++stat.counterPacketDropped % 1000000))
           {
-            std::cout << "[DROPs!!!] pacnum:  " << stat.counterPacketDropped << std::endl << std::flush;
+            std::cout << "\r[DROPs!!!] pacnum:  " << stat.counterPacketDropped << std::endl << std::flush;
           }
         }
       }
@@ -175,7 +173,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
       // log
       if (!(stat.counterPacketRead % 1000000))
       {
-        if (!(stat.counterPacketRead % 30000000)) std::cout << "[READ] pacnum: " << stat.counterPacketRead << "; [READ] Writing found sessions (" << FoundPointSets.size() << ")..." << std::endl << std::flush;
+        if (!(stat.counterPacketRead % 30000000)) std::cout << "\r[READ] pacnum: " << stat.counterPacketRead << "; [READ] Writing found sessions (" << FoundPointSets.size() << ")..." << std::endl << std::flush;
         else std::cout << "-" << std::flush;
       }
     }
@@ -192,23 +190,24 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
 
       SecMapSPtr sptr(new SecMap);
       const auto & secsIts = point.getDottedSecInterval();
-      sptr->insert(secsIts.begin(), secsIts.end());
       for (const std::string& strKey: keys) {
-        if (FoundPoints.count(strKey) == 0) {
-          FoundPoints.insert({ strKey,  sptr });
+        auto it = FoundPoints.insert({ strKey,  sptr }).first;
+        for (auto secVal : secsIts) {
+          // store all time intervals for any found EP (which can repeats) and IP segments. This is needed for directly selection of packets (at transport layer)
+          it->second->insert(secVal);
         }
       }
     }
   }
   
-  // ко второму пробегу выключаем лишний затратный поиск по контенту (оставляем только поиск по конечным точкам)
+  // turn off a search by text (key -find or -fi), now select target packets by found packets at first circle of search
   request.flags.SetFlag(SessionRequest::ContainsDesired_ContentData, false);
 
   // block of SECOND SEARCH: will find remaining parts of ip segments for found transport sessions
   if (!request.flags.TestFlag(SessionRequest::IpFragmentationOff) && FoundPoints.size() > 0) {
     stat.counterPacketRead = 0;
     stat.counterPacketAddedIpFrags = 0;
-    std::cout << "[READ] Second step: " << std::endl << std::flush;
+    std::cout << "\r[READ] Second step: " << std::endl << std::flush;
     std::cout << "[UPDATE] Updating found sessions (" << FoundPoints.size() << ")..." << std::endl << std::flush;
     PCAP::PCAP_Reader Reader(FileNameInput.c_str());
     
@@ -222,6 +221,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
 
       if (request.packetsCount != 0 && stat.counterPacketRead >(request.packetOffset + request.packetsCount)) break;
       if (ReadOk == 0 || (request.packetOffset > 0 && request.packetOffset >= stat.counterPacketRead)) continue;
+      if (request.minSec != 0 && Sec < (request.minSec - SEGMENT_INTERVAL_SEC_LIMIT) || request.maxSec != 0 && Sec > (request.maxSec + SEGMENT_INTERVAL_SEC_LIMIT)) continue;
 
       if (TrafficAnalysis(ReadOk, Buffer, request, response)) {
         response.pacnum = stat.counterPacketRead;
@@ -248,21 +248,27 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
             }
           }
         }
+        // log
         if (!(stat.counterPacketRead % 1000000))
         {
-          if (!(stat.counterPacketRead % 30000000)) std::cout << "[READ] pacnum:  " << stat.counterPacketRead << "; [ADDED IP FRAGMENTS] " << stat.counterPacketAddedIpFrags << ";" << std::endl << std::flush;
+          if (!(stat.counterPacketRead % 30000000)) std::cout << "\r[READ] pacnum:  " << stat.counterPacketRead << "; [ADDED IP FRAGMENTS] " << stat.counterPacketAddedIpFrags << ";" << std::endl << std::flush;
           else std::cout << "-" << std::flush;
         }
-        
       }
     }
   }
 
+  bool isOnlyOutsideConditions = (request.minSec != 0 || request.maxSec != 0 || request.packetsCount != 0 || request.packetOffset != 0)
+                                && !(request.flags.TestFlag(SessionRequest::ContainsDesired_ContentData) || request.flags.TestFlag(SessionRequest::ContainsDesired_ipV4Point)
+                                      || request.flags.TestFlag(SessionRequest::ContainsDesired_ipV4) || request.flags.TestFlag(SessionRequest::ContainsDesired_Port)
+                                      || request.flags.TestFlag(SessionRequest::IsIPv4) || request.flags.TestFlag(SessionRequest::IsIPv6) || request.flags.TestFlag(SessionRequest::IsSCTP)
+                                      || request.flags.TestFlag(SessionRequest::IsTCP) || request.flags.TestFlag(SessionRequest::IsUDP) || request.flags.TestFlag(SessionRequest::IsWLAN));
+
   // block of THIRD SEARCH: will find remaining parts of segments and/or network sessions
-  if (FoundPoints.size() > 0) {
+  if (FoundPoints.size() > 0 || isOnlyOutsideConditions) {
     stat.counterPacketRead = 0;
     stat.counterPacketDropped = 0;
-    std::cout << "[READ] Next step: " << std::endl << std::flush;
+    std::cout << "\r[READ] Next step: " << std::endl << std::flush;
     std::cout << "[WRITE] Writing found sessions (" << FoundPoints.size() << ")..." << std::endl << std::flush;
     PCAP::PCAP_Reader Reader(FileNameInput.c_str());
     PCAP::PCAP_Writer Writer(FileNameOutput.c_str());
@@ -280,14 +286,23 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
 
       if (request.packetsCount != 0 && stat.counterPacketRead > (request.packetOffset + request.packetsCount)) break;
       if (ReadOk == 0 || (request.packetOffset > 0 && request.packetOffset >= stat.counterPacketRead)) continue;
+      if (request.minSec != 0 && Sec < request.minSec || request.maxSec != 0 && Sec > request.maxSec) continue;
 
-      if (TrafficAnalysis(ReadOk, Buffer, request, response, &dropsTransport, &dropsNetwork)) {
-        
+      if (isOnlyOutsideConditions) {
+        ++stat.counterPacketWrite;
+        Writer.Write(ReadOk, Buffer, Sec, NSec);
+        // log statistics
+        if (!(stat.counterPacketRead % 2000000)) {
+          if (!(stat.counterPacketRead % 40000000)) std::cout << "\r[READ] pacnum:  " << stat.counterPacketRead << "; [WRITE] pacnum: " << stat.counterPacketWrite << ";" << std::endl << std::flush;
+          else std::cout << "-" << std::flush;
+        }
+      }
+      else if (TrafficAnalysis(ReadOk, Buffer, request, response, &dropsTransport, &dropsNetwork)) {
         response.pacnum = stat.counterPacketRead;
         response.sec = Sec;
         response.nanosec = NSec;
         std::string bufstr;
-        
+
         // prepare condition of end points
         bool hasSoEp = (response.getKeyEP(bufstr) && FoundPoints.count(bufstr) > 0);
         const auto& foundEPTimeIntervals(hasSoEp ? FoundPoints.find(bufstr)->second : SecMapSPtr(nullptr));
@@ -298,16 +313,15 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
         bool hasSoPacket = (response.getKeyPacketNumber(bufstr) && FoundPoints.count(bufstr) > 0);
 
         // WRITING of data in new pcap by the condition
-        if (hasSoPacket || (hasSoEp && (!Finder::FindDirectTransportPackets || checkSegmentActuality(response.sec, foundEPTimeIntervals))) 
-                        || (hasSoIpSeg && checkSegmentActuality(response.sec, foundIPTimeIntervals)))
+        if (hasSoPacket || (hasSoEp && (!Finder::FindDirectTransportPackets || checkSegmentActuality(response.sec, foundEPTimeIntervals)))
+          || (hasSoIpSeg && checkSegmentActuality(response.sec, foundIPTimeIntervals)))
         {
           ++stat.counterPacketWrite;
           Writer.Write(ReadOk, Buffer, Sec, NSec);
         }
         // log statistics
-        if (!(stat.counterPacketRead % 1000000))
-        {
-          if (!(stat.counterPacketRead % 30000000)) std::cout << "[READ] pacnum:  " << stat.counterPacketRead << "; [WRITE] pacnum: " << stat.counterPacketWrite << ";" << std::endl << std::flush;
+        if (!(stat.counterPacketRead % 1000000)) {
+          if (!(stat.counterPacketRead % 30000000)) std::cout << "\r[READ] pacnum:  " << stat.counterPacketRead << "; [WRITE] pacnum: " << stat.counterPacketWrite << ";" << std::endl << std::flush;
           else std::cout << "-" << std::flush;
         }
       }
@@ -315,7 +329,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
 
     // result log of dropped packets (osi network level)
     if (dropsNetwork.size()) {
-      std::cout << "[DROPed network protocols]: ";
+      std::cout << "\r[DROPed network protocols]: ";
       bool firstIter = true;
       for (const auto& proto : dropsNetwork) {
         if (firstIter) firstIter = false;
@@ -326,7 +340,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
     }
     // result log of dropped packets (osi transport level)
     if (dropsTransport.size()) {
-      std::cout << "[DROPed transport protocols]: ";
+      std::cout << "\r[DROPed transport protocols]: ";
       bool firstIter = true;
       for (const auto& proto : dropsTransport) {
         if (firstIter) firstIter = false;
