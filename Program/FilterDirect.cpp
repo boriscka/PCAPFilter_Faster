@@ -130,7 +130,14 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
   char Buffer[256 * 1024];
   FoundPoints FoundPoints;
 
+  bool isOnlyOutsideConditions = (request.minSec != 0 || request.maxSec != 0 || request.packetsCount != 0 || request.packetOffset != 0)
+    && !(request.flags.TestFlag(SessionRequest::ContainsDesired_ContentData) || request.flags.TestFlag(SessionRequest::ContainsDesired_ipV4Point)
+      || request.flags.TestFlag(SessionRequest::ContainsDesired_ipV4) || request.flags.TestFlag(SessionRequest::ContainsDesired_Port)
+      || request.flags.TestFlag(SessionRequest::IsIPv4) || request.flags.TestFlag(SessionRequest::IsIPv6) || request.flags.TestFlag(SessionRequest::IsSCTP)
+      || request.flags.TestFlag(SessionRequest::IsTCP) || request.flags.TestFlag(SessionRequest::IsUDP) || request.flags.TestFlag(SessionRequest::IsWLAN));
+
   // block of FIRST SEARCH: by requests, will find some segments and small packets, which is needed
+  if(!isOnlyOutsideConditions)
   {
     std::cout << "[READ]c First step: " << std::endl << std::flush;
     PCAP::PCAP_Reader Reader(FileNameInput.c_str());
@@ -147,8 +154,9 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
       ++stat.counterPacketRead;
       
       if (request.packetsCount != 0 && stat.counterPacketRead > (request.packetOffset + request.packetsCount)) break;
+      if (request.maxSec != 0 && Sec > request.maxSec) break;
       if (ReadOk == 0 || (request.packetOffset > 0 && request.packetOffset >= stat.counterPacketRead)) continue;
-      if (request.minSec != 0 && Sec < request.minSec || request.maxSec != 0 && Sec > request.maxSec) continue;
+      if (request.minSec != 0 && Sec < request.minSec) continue;
           
       if (TrafficAnalysis(ReadOk, Buffer, request, response)) {
         response.pacnum = stat.counterPacketRead;
@@ -204,7 +212,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
   request.flags.SetFlag(SessionRequest::ContainsDesired_ContentData, false);
 
   // block of SECOND SEARCH: will find remaining parts of ip segments for found transport sessions
-  if (!request.flags.TestFlag(SessionRequest::IpFragmentationOff) && FoundPoints.size() > 0) {
+  if (!request.flags.TestFlag(SessionRequest::IpFragmentationOff) && FoundPoints.size() > 0 && !isOnlyOutsideConditions) {
     stat.counterPacketRead = 0;
     stat.counterPacketAddedIpFrags = 0;
     std::cout << "\r[READ] Second step: " << std::endl << std::flush;
@@ -220,8 +228,9 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
       ++stat.counterPacketRead;
 
       if (request.packetsCount != 0 && stat.counterPacketRead >(request.packetOffset + request.packetsCount)) break;
+      if (request.maxSec != 0 && Sec > (request.maxSec + SEGMENT_INTERVAL_SEC_LIMIT)) break;
       if (ReadOk == 0 || (request.packetOffset > 0 && request.packetOffset >= stat.counterPacketRead)) continue;
-      if (request.minSec != 0 && Sec < (request.minSec - SEGMENT_INTERVAL_SEC_LIMIT) || request.maxSec != 0 && Sec > (request.maxSec + SEGMENT_INTERVAL_SEC_LIMIT)) continue;
+      if (request.minSec != 0 && Sec < (request.minSec - SEGMENT_INTERVAL_SEC_LIMIT)) continue;
 
       if (TrafficAnalysis(ReadOk, Buffer, request, response)) {
         response.pacnum = stat.counterPacketRead;
@@ -258,12 +267,6 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
     }
   }
 
-  bool isOnlyOutsideConditions = (request.minSec != 0 || request.maxSec != 0 || request.packetsCount != 0 || request.packetOffset != 0)
-                                && !(request.flags.TestFlag(SessionRequest::ContainsDesired_ContentData) || request.flags.TestFlag(SessionRequest::ContainsDesired_ipV4Point)
-                                      || request.flags.TestFlag(SessionRequest::ContainsDesired_ipV4) || request.flags.TestFlag(SessionRequest::ContainsDesired_Port)
-                                      || request.flags.TestFlag(SessionRequest::IsIPv4) || request.flags.TestFlag(SessionRequest::IsIPv6) || request.flags.TestFlag(SessionRequest::IsSCTP)
-                                      || request.flags.TestFlag(SessionRequest::IsTCP) || request.flags.TestFlag(SessionRequest::IsUDP) || request.flags.TestFlag(SessionRequest::IsWLAN));
-
   // block of THIRD SEARCH: will find remaining parts of segments and/or network sessions
   if (FoundPoints.size() > 0 || isOnlyOutsideConditions) {
     stat.counterPacketRead = 0;
@@ -285,15 +288,16 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
       ++stat.counterPacketRead;
 
       if (request.packetsCount != 0 && stat.counterPacketRead > (request.packetOffset + request.packetsCount)) break;
+      if (request.maxSec != 0 && Sec > request.maxSec) break;
       if (ReadOk == 0 || (request.packetOffset > 0 && request.packetOffset >= stat.counterPacketRead)) continue;
-      if (request.minSec != 0 && Sec < request.minSec || request.maxSec != 0 && Sec > request.maxSec) continue;
+      if (request.minSec != 0 && Sec < request.minSec) continue;
 
       if (isOnlyOutsideConditions) {
         ++stat.counterPacketWrite;
         Writer.Write(ReadOk, Buffer, Sec, NSec);
         // log statistics
-        if (!(stat.counterPacketRead % 2000000)) {
-          if (!(stat.counterPacketRead % 40000000)) std::cout << "\r[READ] pacnum:  " << stat.counterPacketRead << "; [WRITE] pacnum: " << stat.counterPacketWrite << ";" << std::endl << std::flush;
+        if (!(stat.counterPacketRead % 1000000)) {
+          if (!(stat.counterPacketRead % 30000000)) std::cout << "\r[READ] pacnum:  " << stat.counterPacketRead << "; [WRITE] pacnum: " << stat.counterPacketWrite << ";" << std::endl << std::flush;
           else std::cout << "-" << std::flush;
         }
       }
