@@ -7,10 +7,12 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <unordered_map>
 
 namespace PCAP {
 
   typedef std::vector<std::string> StringParams;
+  typedef std::unordered_map<std::string, bool> HashedStringParams;
   typedef std::vector<std::uint32_t> Uint32Params;
   typedef std::vector<std::uint16_t> Uint16Params;
   

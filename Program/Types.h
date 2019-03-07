@@ -213,6 +213,7 @@ struct Request
 {
   EndPoint Point;
   PCAP::StringParams ContentData;
+  PCAP::HashedStringParams ContentHashedData;
   PCAP::Uint16Params portsUdp;
   PCAP::Uint32Params addrsIp4;
   EPParams eps;

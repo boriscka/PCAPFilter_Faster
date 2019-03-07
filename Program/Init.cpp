@@ -162,6 +162,22 @@ void InitParamParser(cmd_line::cmd_line_parser& parser)
   parser.InitParam("-max-secstamp", "", "<timestamp in seconds>", "End to find on <max-secstamp> second", false);
 }
 
+void getHashedValues(const PCAP::StringParams& values, PCAP::HashedStringParams& hashedVals) {
+  size_t totalHashes = 0;
+  for (const auto& val : values) {
+    totalHashes += val.size();
+  }
+  hashedVals.rehash(totalHashes);
+  for (const auto& val : values) {
+    const size_t len = val.size();
+    for (size_t i = 0; i < len; ++i) {
+      bool isEnd = (len == (i + 1));
+      auto resIt = hashedVals.insert({ val.substr(0, i + 1), isEnd });
+      if (!resIt.second && isEnd) resIt.first->second = true;
+    }
+  }
+}
+
 bool InitRequest(const cmd_line::cmd_line_parser & parser, Request & request)
 {
   request.flags |= parser.GetParam("-is_ip4") ? SessionRequest::IsIPv4 : SessionRequest::NONE;
@@ -199,6 +215,7 @@ bool InitRequest(const cmd_line::cmd_line_parser & parser, Request & request)
     request.ContentData.resize(Values.size() + Values2.size());
     std::copy(Values.begin(), Values.end(), request.ContentData.begin());
     std::copy(Values2.begin(), Values2.end(), request.ContentData.begin() + Values.size());
+    getHashedValues(request.ContentData, request.ContentHashedData);
   }
   return true;
 }

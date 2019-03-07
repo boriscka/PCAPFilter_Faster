@@ -83,6 +83,38 @@ inline bool fastFindAnyValue(const char* data, uint64_t dataSize, const PCAP::St
   return false;
 }
 
+inline bool fastFindAnyValue(const char* data, uint64_t dataSize, const PCAP::StringParams& values, const PCAP::HashedStringParams& hashedVals)
+{
+  std::vector<uint64_t> tmpBeginOccurances;
+
+  for (uint64_t i = 0; i < dataSize; ++i) {
+    for (auto offsetOccIter = tmpBeginOccurances.begin(); offsetOccIter != tmpBeginOccurances.end();) {
+      std::string occStr(data + (*offsetOccIter), i - (*offsetOccIter) + 1);
+      auto res = hashedVals.find(occStr);
+
+      // if occurance not match more then delete current occurance and continue
+      if (res == hashedVals.end()) {
+        offsetOccIter = tmpBeginOccurances.erase(offsetOccIter);
+        continue;
+      }
+
+      // has found it
+      if (res->second) return true;
+      
+      ++offsetOccIter;
+    }
+
+    // add a begin of new occurance if it matches with hash
+    std::string occStr(data + i, 1);
+    auto res = hashedVals.find(occStr);
+    if (res != hashedVals.end()) {
+      if (res->second) return true;
+      tmpBeginOccurances.push_back(i);
+    }
+  }
+  return false;
+}
+
 bool TrafficAnalysis(uint64_t SizeFrame, const char *Data, const Request& request, Answer& respone, TransportCounterMap* dropsTransportPtr, NetworkCounterMap* dropsNetworkPtr)
 {
   using namespace FilterTraffic;
@@ -253,7 +285,7 @@ bool TrafficAnalysis(uint64_t SizeFrame, const char *Data, const Request& reques
     }
   }
 
-  if (request.flags.TestFlag(SessionRequest::ContainsDesired_ContentData) && BeginData != nullptr && lenData <= (SizeFrame - offsetData) && fastFindAnyValue(BeginData, lenData, request.ContentData))
+  if (request.flags.TestFlag(SessionRequest::ContainsDesired_ContentData) && BeginData != nullptr && lenData <= (SizeFrame - offsetData) && fastFindAnyValue(BeginData, lenData, request.ContentData, request.ContentHashedData))
   {
     respone.flags |= SessionResult::ContainsDesired_ContentData;
   }
