@@ -15,7 +15,6 @@ namespace cmd_line {
   // don't read it (care about your brain)
   bool cmd_line_parser::Init(std::string exename, std::string HelpMessagePreffix, int argc, char* argv[])
   {
-    int iter = 1;
     bool retval = true;
     _exename = exename;
     maxLengthParam   = 1;
@@ -33,30 +32,34 @@ namespace cmd_line {
       if(p.second.helpexample.length() > maxLengthExample) maxLengthExample = p.second.helpexample.length();
     }
 
-    for (int i = 1; i < argc; i += iter){
-      std::string param = "";
-      std::string paramName = argv[i];
+    std::string paramName;
 
-      if (i == 1 && paramName[0] != '-') {
-        param = paramName;
+    for (int i = 1; i < argc; ++i){
+      std::string param = "";
+
+      if (argv[i][0] == '-') {
+        paramName = argv[i];
+      }
+      else {
+        param = argv[i];
+      }
+
+      if (i == 1 && paramName.empty()) {
         paramName = "--input";
       }
 
-      if (paramName[0] == '-') {
+      if (!paramName.empty()) {
         if (_Data.find(paramName) == _Data.end()) {
           std::cout << "ERROR: The parameter " << paramName << " is unrecognized!" << std::endl;
           retval = false;
           continue;
         }
         _Data[paramName].IsExist = true;
-        iter = 1;
+
+        if (!param.empty()) {
+          _Data[paramName].paramvalues.insert(param);
+        }
       }
-      else continue;
-      if (param.empty() && i < (argc - 1) && argv[i + 1][0] != '-') {
-        param = argv[i + 1];
-        iter = 2;
-      }
-      _Data[paramName].paramvalues.insert(param);
     }
 
     for(auto &p: _Data){
