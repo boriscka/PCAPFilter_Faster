@@ -134,12 +134,12 @@ bool InitParamDataIPv4Port(const cmd_line::cmd_line_parser& parser, const char* 
 void InitParamParser(cmd_line::cmd_line_parser& parser)
 {
   parser.InitParam("--input", "", "<file path>", "Input pcap file. First param already is file path by default", true);
-  parser.InitParam("--only_ip4", "", "", "Only IPV4.", false);
-  parser.InitParam("--only_ip6", "", "", "Only IPV6.", false);
-  parser.InitParam("--only_tcp", "", "", "Only TCP.", false);
-  parser.InitParam("--only_udp", "", "", "Only UDP.", false);
-  parser.InitParam("--only_sctp", "", "", "Only SCTP.", false);
-  parser.InitParam("--both_ep", "", "", "Find matches of both end points (source and destination).", false);
+  parser.InitParam("--only-ip4", "", "", "Only IPV4.", false);
+  parser.InitParam("--only-ip6", "", "", "Only IPV6.", false);
+  parser.InitParam("--only-tcp", "", "", "Only TCP.", false);
+  parser.InitParam("--only-udp", "", "", "Only UDP.", false);
+  parser.InitParam("--only-sctp", "", "", "Only SCTP.", false);
+  parser.InitParam("--both-eps", "", "", "Find matches of both end points (source and destination).", false);
   parser.InitParam("--drops", "", "", "Whether to write dropped unknown packets in separated file.", false);
   parser.InitParam("--whole-word", "", "", "don't search data by halfs into packets (for example, into segments)", false);
 
@@ -179,12 +179,12 @@ void getHashedValues(const PCAP::StringParams& values, PCAP::HashedStringParams&
 
 bool InitRequest(const cmd_line::cmd_line_parser & parser, Request & request)
 {
-  request.flags |= parser.GetParam("--only_ip4") ? SessionRequest::IsIPv4 : SessionRequest::NONE;
-  request.flags |= parser.GetParam("--only_ip6") ? SessionRequest::IsIPv6 : SessionRequest::NONE;
-  request.flags |= parser.GetParam("--only_tcp") ? SessionRequest::IsTCP : SessionRequest::NONE;
-  request.flags |= parser.GetParam("--only_udp") ? SessionRequest::IsUDP : SessionRequest::NONE;
-  request.flags |= parser.GetParam("--only_sctp") ? SessionRequest::IsSCTP : SessionRequest::NONE;
-  request.flags |= parser.GetParam("--both_ep") ? SessionRequest::BothEP : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only-ip4") ? SessionRequest::IsIPv4 : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only-ip6") ? SessionRequest::IsIPv6 : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only-tcp") ? SessionRequest::IsTCP : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only-udp") ? SessionRequest::IsUDP : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only-sctp") ? SessionRequest::IsSCTP : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--both-eps") ? SessionRequest::BothEP : SessionRequest::NONE;
   request.flags |= parser.GetParam("--drops") ? SessionRequest::ToWriteDrops : SessionRequest::NONE;
 
   request.flags |= parser.GetParam("--ip-frag-off") ? SessionRequest::IpFragmentationOff : SessionRequest::NONE;
