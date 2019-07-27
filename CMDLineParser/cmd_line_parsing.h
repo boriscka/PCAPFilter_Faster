@@ -30,17 +30,17 @@ namespace cmd_line {
   public:
     bool Init(std::string exename, std::string HelpMessagePreffix, int argc, char* argv[]);
 
-    void InitParam(std::string param, int         defaultvalue, std::string help_example, std::string help_message, bool IsMust);
-    void InitParam(std::string param, uint64_t    defaultvalue, std::string help_example, std::string help_message, bool IsMust);
-    void InitParam(std::string param, double      defaultvalue, std::string help_example, std::string help_message, bool IsMust);
-    void InitParam(std::string param, std::string defaultvalue, std::string help_example, std::string help_message, bool IsMust);
+	template<typename T>
+    void InitParam(std::string param, T defaultvalue, std::string format, std::string description, bool mustHave);
+
     bool GetParam(std::string param) const;
     bool GetParam(std::string param, int         &value, size_t No = 0) const;
     bool GetParam(std::string param, uint64_t    &value, size_t No = 0) const;
     bool GetParam(std::string param, double      &value, size_t No = 0) const;
     bool GetParam(std::string param, std::string &value, size_t No = 0) const;
     bool GetParams(std::string paramName, ParamValuesType& values, bool toDoHalfs = true) const;
-    bool tryConvertToInt(const std::string& str, int &value) const;
+    
+	bool tryConvertToInt(const std::string& str, int &value) const;
     bool tryConvertToInt(const std::string& str, uint64_t &value) const;
 
     void PrintBuildInfo() const;

@@ -11,6 +11,8 @@
 
 namespace cmd_line {
 
+  // strange dildo code =(
+  // don't read it (care about your brain)
   bool cmd_line_parser::Init(std::string exename, std::string HelpMessagePreffix, int argc, char* argv[])
   {
     int iter = 1;
@@ -34,42 +36,27 @@ namespace cmd_line {
     for (int i = 1; i < argc; i += iter){
       std::string param = "";
       std::string paramName = argv[i];
-      if (i < argc - 1) {
-        std::string paramNext = argv[i + 1];
-        if (paramNext[0] == '-') {
-          iter = 1;
-        } else {
-          if(_Data.find(paramName) == _Data.end()){
-            std::cout << "ERROR: The parameter " << paramName << " is unrecognized!" << std::endl;
-            retval = false;
-            continue;
-          }
-          param = paramNext;
-          _Data[paramName].IsExist    = true;
-          _Data[paramName].paramvalues.insert(param);
-          iter = 2;
-        }
+
+      if (i == 1 && paramName[0] != '-') {
+        param = paramName;
+        paramName = "--input";
       }
-      if(_Data.find(paramName) == _Data.end()){
-        std::cout << "ERROR: The parameter " << paramName << " is unrecognized!" << std::endl;
-        retval = false;
-        continue;
-      }
-      if(paramName.length() > 0 && iter == 1){
-        _Data[paramName].IsExist    = true;
-        _Data[paramName].paramvalues.insert("1");
-      }
-      if(i == argc - 1 && paramName.length() > 1){
-        if(_Data.find(paramName) == _Data.end()){
+
+      if (paramName[0] == '-') {
+        if (_Data.find(paramName) == _Data.end()) {
           std::cout << "ERROR: The parameter " << paramName << " is unrecognized!" << std::endl;
           retval = false;
           continue;
         }
-        if(paramName[0] == '-'){
-          _Data[paramName].IsExist    = true;
-          _Data[paramName].paramvalues.insert(param);
-        }
+        _Data[paramName].IsExist = true;
+        iter = 1;
       }
+      else continue;
+      if (param.empty() && i < (argc - 1) && argv[i + 1][0] != '-') {
+        param = argv[i + 1];
+        iter = 2;
+      }
+      _Data[paramName].paramvalues.insert(param);
     }
 
     for(auto &p: _Data){
@@ -90,58 +77,17 @@ namespace cmd_line {
     return retval;
   }
 
-  void cmd_line_parser::InitParam(std::string param, int         defaultvalue, std::string help_example, std::string help_message, bool IsMust)
+  template<typename T>
+  void cmd_line_parser::InitParam(std::string param, T defaultvalue, std::string format, std::string description, bool mustHave)
   {
     auto ToAdd_find = _Data.find(param);
     _Param ToAdd_;
     _Param& ToAdd = ToAdd_find == _Data.end() ? ToAdd_ : ToAdd_find->second;
-    ToAdd.helpmessage = help_message;
-    ToAdd.helpexample = help_example;
+    ToAdd.helpmessage = description;
+    ToAdd.helpexample = format;
     ToAdd.IsExist     = false;
-    ToAdd.defaultvalue = std::to_string(defaultvalue);
-    ToAdd.IsMust      = IsMust;
-    ToAdd.Counter     = _Data.size();
-    _Data[param]      = ToAdd;
-  }
-
-  void cmd_line_parser::InitParam(std::string param, uint64_t    defaultvalue, std::string help_example, std::string help_message, bool IsMust)
-  {
-    auto ToAdd_find = _Data.find(param);
-    _Param ToAdd_;
-    _Param& ToAdd = ToAdd_find == _Data.end() ? ToAdd_ : ToAdd_find->second;
-    ToAdd.helpmessage = help_message;
-    ToAdd.helpexample = help_example;
-    ToAdd.IsExist     = false;
-    ToAdd.defaultvalue = std::to_string(defaultvalue);
-    ToAdd.IsMust      = IsMust;
-    ToAdd.Counter     = _Data.size();
-    _Data[param]      = ToAdd;
-  }
-
-  void cmd_line_parser::InitParam(std::string param, double      defaultvalue, std::string help_example, std::string help_message, bool IsMust)
-  {
-    auto ToAdd_find = _Data.find(param);
-    _Param ToAdd_;
-    _Param& ToAdd = ToAdd_find == _Data.end() ? ToAdd_ : ToAdd_find->second;
-    ToAdd.helpmessage = help_message;
-    ToAdd.helpexample = help_example;
-    ToAdd.IsExist     = false;
-    ToAdd.defaultvalue = std::to_string(defaultvalue);
-    ToAdd.IsMust      = IsMust;
-    ToAdd.Counter     = _Data.size();
-    _Data[param]      = ToAdd;
-  }
-
-  void cmd_line_parser::InitParam(std::string param, std::string defaultvalue, std::string help_example, std::string help_message, bool IsMust)
-  {
-    auto ToAdd_find = _Data.find(param);
-    _Param ToAdd_;
-    _Param& ToAdd = ToAdd_find == _Data.end() ? ToAdd_ : ToAdd_find->second;
-    ToAdd.helpmessage = help_message;
-    ToAdd.helpexample = help_example;
-    ToAdd.IsExist     = false;
-    ToAdd.defaultvalue = defaultvalue;
-    ToAdd.IsMust      = IsMust;
+    ToAdd.defaultvalue = std::string(defaultvalue);
+    ToAdd.IsMust      = mustHave;
     ToAdd.Counter     = _Data.size();
     _Data[param]      = ToAdd;
   }
@@ -354,7 +300,7 @@ namespace cmd_line {
   {
     std::string _helpMessage;
     _helpMessage += "\n";
-    _helpMessage += _exename + " - (C) 1982-18 www.horns_and_hooves.ru \n" + _HelpMessagePreffix + "\n";
+    _helpMessage += _exename + " - (C) 2018-19 www.pcapfilter.dom \n" + _HelpMessagePreffix + "\n";
     for(size_t c = 0; c < _Data.size() * 2; c++){
       for(auto &p: _Data){
         if(c == p.second.Counter){

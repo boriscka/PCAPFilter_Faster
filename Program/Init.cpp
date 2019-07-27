@@ -133,33 +133,32 @@ bool InitParamDataIPv4Port(const cmd_line::cmd_line_parser& parser, const char* 
 
 void InitParamParser(cmd_line::cmd_line_parser& parser)
 {
-  parser.InitParam("-input", "", "<pcap file>", "Input pcap file.", true);
-  parser.InitParam("-output", "", "<pcap file>", "Output pcap file.", true);
-  parser.InitParam("-is_ip4", "", "<true|false>", "Only IPV4.", false);
-  parser.InitParam("-is_ip6", "", "<true|false>", "Only IPV6.", false);
-  parser.InitParam("-is_tcp", "", "<true|false>", "Only TCP.", false);
-  parser.InitParam("-is_udp", "", "<true|false>", "Only UDP.", false);
-  parser.InitParam("-is_sctp", "", "<true|false>", "Only SCTP.", false);
-  parser.InitParam("-both_ep", "", "<true|false>", "Find matches of both end points (source and destination).", false);
-  parser.InitParam("-drops", "", "<true|false>", "Whether to write dropped unknown packets in separated file.", false);
-  parser.InitParam("-luck", "", "<true|false>", "don't search data by halfs into packets (for example, into segments)", false);
+  parser.InitParam("--input", "", "<file path>", "Input pcap file. First param already is file path by default", true);
+  parser.InitParam("--only_ip4", "", "", "Only IPV4.", false);
+  parser.InitParam("--only_ip6", "", "", "Only IPV6.", false);
+  parser.InitParam("--only_tcp", "", "", "Only TCP.", false);
+  parser.InitParam("--only_udp", "", "", "Only UDP.", false);
+  parser.InitParam("--only_sctp", "", "", "Only SCTP.", false);
+  parser.InitParam("--both_ep", "", "", "Find matches of both end points (source and destination).", false);
+  parser.InitParam("--drops", "", "", "Whether to write dropped unknown packets in separated file.", false);
+  parser.InitParam("--whole-word", "", "", "don't search data by halfs into packets (for example, into segments)", false);
 
-  parser.InitParam("-ip-fragmentation-off", "", "<true|false>", "find ip fragments of not (by default is turned on)", false);
+  parser.InitParam("--ip-frag-off", "", "", "find ip fragments of not (by default is turned on)", false);
 
-  parser.InitParam("-IPv4", "", "<IPv4 NO>[,<IPv4 NO>]*", "Only ip4 addreses (separated by commas).", false);
-  parser.InitParam("-port", "", "<port NO>[,<port NO>]*", "Only SRC PORTs (separated by commas).", false);
-  parser.InitParam("-eps", "", "<IPv4 NO>:<port NO>[,<IPv4 NO>:<port NO>]*", "find packets by end points (IPv4 and PORT), there are comma is separator.", false);
+  parser.InitParam("--ip4s", "", "<IPv4>[,<IPv4>]*", "Only ip4 addreses (separated by commas).", false);
+  parser.InitParam("--ports", "", "<port>[,<port>]*", "Only SRC PORTs (separated by commas).", false);
+  parser.InitParam("--eps", "", "<IPv4>:<port>[,<IPv4>:<port>]*", "find packets by end points (IPv4 and PORT), there are comma is separator.", false);
 
-  parser.InitParam("-DTP", "", "<true|false>", "Direct Transport Packets. Search only direct transport packet by required text data (param -find) to reduce size of found pcap.", false);
+  parser.InitParam("--whole-session", "", "", "Search transport level packets by required text data (param --find), and save whole transport session in out pcap.", false);
 
-  parser.InitParam("-find", "", "<text data>", "Find all packets by \"text data\".", false);
-  parser.InitParam("-fi", "", "<text data>", "Same parameter as -find ...", false);
+  parser.InitParam("--find", "", "<text data>", "Find all packets by \"text data\".", false);
+  parser.InitParam("-f", "", "<text data>", "Same parameter as -find ...", false);
 
-  parser.InitParam("-count", "", "<count packets>", "Stop on <count> packets", false);
-  parser.InitParam("-offset", "", "<count packets>", "Start from <offset> packet (-offset 1, it means search from second packet)", false);
+  parser.InitParam("--count", "", "<number>", "Stop on <count> packets", false);
+  parser.InitParam("--offset", "", "<number>", "Start from <offset> packet (-offset 1, it means search from second packet)", false);
 
-  parser.InitParam("-min-secstamp", "", "<timestamp in seconds>", "Begin to find from <min-secstamp> second", false);
-  parser.InitParam("-max-secstamp", "", "<timestamp in seconds>", "End to find on <max-secstamp> second", false);
+  parser.InitParam("--min-time", "", "<timestamp in seconds>", "Begin to find from <min-secstamp> second", false);
+  parser.InitParam("--max-time", "", "<timestamp in seconds>", "End to find on <max-secstamp> second", false);
 }
 
 void getHashedValues(const PCAP::StringParams& values, PCAP::HashedStringParams& hashedVals) {
@@ -180,38 +179,38 @@ void getHashedValues(const PCAP::StringParams& values, PCAP::HashedStringParams&
 
 bool InitRequest(const cmd_line::cmd_line_parser & parser, Request & request)
 {
-  request.flags |= parser.GetParam("-is_ip4") ? SessionRequest::IsIPv4 : SessionRequest::NONE;
-  request.flags |= parser.GetParam("-is_ip6") ? SessionRequest::IsIPv6 : SessionRequest::NONE;
-  request.flags |= parser.GetParam("-is_tcp") ? SessionRequest::IsTCP : SessionRequest::NONE;
-  request.flags |= parser.GetParam("-is_udp") ? SessionRequest::IsUDP : SessionRequest::NONE;
-  request.flags |= parser.GetParam("-is_sctp") ? SessionRequest::IsSCTP : SessionRequest::NONE;
-  request.flags |= parser.GetParam("-both_ep") ? SessionRequest::BothEP : SessionRequest::NONE;
-  request.flags |= parser.GetParam("-drops") ? SessionRequest::ToWriteDrops : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only_ip4") ? SessionRequest::IsIPv4 : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only_ip6") ? SessionRequest::IsIPv6 : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only_tcp") ? SessionRequest::IsTCP : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only_udp") ? SessionRequest::IsUDP : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--only_sctp") ? SessionRequest::IsSCTP : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--both_ep") ? SessionRequest::BothEP : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--drops") ? SessionRequest::ToWriteDrops : SessionRequest::NONE;
 
-  request.flags |= parser.GetParam("-ip-fragmentation-off") ? SessionRequest::IpFragmentationOff : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--ip-frag-off") ? SessionRequest::IpFragmentationOff : SessionRequest::NONE;
 
-  request.flags |= InitParamDataIPv4(parser, "-IPv4", request.addrsIp4) ? SessionRequest::ContainsDesired_ipV4 : SessionRequest::NONE;
-  request.flags |= InitParamDataPort(parser, "-port", request.portsUdp) ? SessionRequest::ContainsDesired_Port : SessionRequest::NONE;
-  request.flags |= InitParamDataIPv4Port(parser, "-eps", request.eps) ? SessionRequest::ContainsDesired_ipV4Point : SessionRequest::NONE;
+  request.flags |= InitParamDataIPv4(parser, "--ip4s", request.addrsIp4) ? SessionRequest::ContainsDesired_ipV4 : SessionRequest::NONE;
+  request.flags |= InitParamDataPort(parser, "--ports", request.portsUdp) ? SessionRequest::ContainsDesired_Port : SessionRequest::NONE;
+  request.flags |= InitParamDataIPv4Port(parser, "--eps", request.eps) ? SessionRequest::ContainsDesired_ipV4Point : SessionRequest::NONE;
 
   std::string Param;
-  request.flags |= parser.GetParam("-fi", Param) ? SessionRequest::ContainsDesired_ContentData : SessionRequest::NONE;
-  request.flags |= parser.GetParam("-find", Param) ? SessionRequest::ContainsDesired_ContentData : SessionRequest::NONE;
+  request.flags |= parser.GetParam("-f", Param) ? SessionRequest::ContainsDesired_ContentData : SessionRequest::NONE;
+  request.flags |= parser.GetParam("--find", Param) ? SessionRequest::ContainsDesired_ContentData : SessionRequest::NONE;
 
   uint64_t cntPckts = 0;
-  request.packetsCount = parser.GetParam("-count", cntPckts) ? cntPckts : 0;
-  request.packetOffset = parser.GetParam("-offset", cntPckts) ? cntPckts : 0;
+  request.packetsCount = parser.GetParam("--count", cntPckts) ? cntPckts : 0;
+  request.packetOffset = parser.GetParam("--offset", cntPckts) ? cntPckts : 0;
 
   uint64_t secs = 0;
-  request.minSec = parser.GetParam("-min-secstamp", secs) ? secs : 0;
-  request.maxSec = parser.GetParam("-max-secstamp", secs) ? secs : 0;
+  request.minSec = parser.GetParam("--min-time", secs) ? secs : 0;
+  request.maxSec = parser.GetParam("--max-time", secs) ? secs : 0;
 
   if (request.flags.TestFlag(SessionRequest::ContainsDesired_ContentData))
   {
-    bool toSearchByHalfs = !parser.GetParam("-luck");
+    bool toSearchByHalfs = !parser.GetParam("--whole-word");
     cmd_line::ParamValuesType Values, Values2;
-    parser.GetParams("-fi", Values, toSearchByHalfs);
-    parser.GetParams("-find", Values2, toSearchByHalfs);
+    parser.GetParams("-f", Values, toSearchByHalfs);
+    parser.GetParams("--find", Values2, toSearchByHalfs);
     request.ContentData.resize(Values.size() + Values2.size());
     std::copy(Values.begin(), Values.end(), request.ContentData.begin());
     std::copy(Values2.begin(), Values2.end(), request.ContentData.begin() + Values.size());

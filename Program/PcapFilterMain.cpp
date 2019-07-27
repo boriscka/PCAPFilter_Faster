@@ -61,11 +61,18 @@ int main(int argc, char **argv)
 
     std::string FileNameInput;
     std::string FileNameOutput;
-    parsing_cmd.GetParam("-input", FileNameInput);
-    parsing_cmd.GetParam("-output", FileNameOutput);
+    parsing_cmd.GetParam("--input", FileNameInput);
+
+	  if (FileNameInput.size() < 6) {
+		  parsing_cmd.PrintBuildInfo();
+		  parsing_cmd.PrintHelpMessage();
+		  return 0;
+	  }
+
+	  FileNameOutput = FileNameInput.substr(0, FileNameInput.size() - 5) + "_pure.pcap";
 
     std::string Param;
-    Finder::FindDirectTransportPackets = parsing_cmd.GetParam("-DTP", Param);
+    Finder::FindDirectTransportPackets = !parsing_cmd.GetParam("--whole-session", Param);
 
     Request request;
     if (!InitRequest(parsing_cmd, request))
