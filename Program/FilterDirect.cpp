@@ -134,7 +134,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
     && !(request.flags.TestFlag(SessionRequest::ContainsDesired_ContentData) || request.flags.TestFlag(SessionRequest::ContainsDesired_ipV4Point)
       || request.flags.TestFlag(SessionRequest::ContainsDesired_ipV4) || request.flags.TestFlag(SessionRequest::ContainsDesired_Port)
       || request.flags.TestFlag(SessionRequest::IsIPv4) || request.flags.TestFlag(SessionRequest::IsIPv6) || request.flags.TestFlag(SessionRequest::IsSCTP)
-      || request.flags.TestFlag(SessionRequest::IsTCP) || request.flags.TestFlag(SessionRequest::IsUDP) || request.flags.TestFlag(SessionRequest::IsWLAN));
+      || request.flags.TestFlag(SessionRequest::IsTCP) || request.flags.TestFlag(SessionRequest::IsUDP));
 
   // block of FIRST SEARCH: by requests, will find some segments and small packets, which is needed
   if(!isOnlyOutsideConditions)
@@ -184,23 +184,15 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
     clearCoutLine();
 
     FoundPoints.rehash(FoundPointSets.size() * 10); // need size more in 5*2 times to define max hash buckets (for optimal hash space)
-    std::string bufstr;
+    
     for (const auto& point : FoundPointSets) {
       std::vector<std::string> keys;
-      if (!request.flags.TestFlag(SessionRequest::IpFragmentationOff) && point.getKeyIp(bufstr))           keys.push_back(bufstr);
-      //if (point.getReverseKeyIp(bufstr))    keys.push_back(bufstr);
-      if (point.getKeyEP(bufstr))           keys.push_back(bufstr);
-      if (point.getReverseKeyEP(bufstr))    keys.push_back(bufstr);
-      if (point.getKeyPacketNumber(bufstr)) keys.push_back(bufstr);
+      point.getKeys(keys, !request.flags.TestFlag(SessionRequest::IpFragmentationOff));
 
-      SecMapSPtr sptr(new SecMap);
-      const auto & secsIts = point.getDottedSecInterval();
       for (const std::string& strKey: keys) {
-        auto it = FoundPoints.insert({ strKey,  sptr }).first;
-        for (auto secVal : secsIts) {
-          // store all time intervals for any found EP (which can repeats) and IP segments. This is needed for directly selection of packets (at transport layer)
-          it->second->insert(secVal);
-        }
+        auto& it = FoundPoints.try_emplace(strKey).first;
+        if (!it->second) it->second = std::make_shared<SecMap>();
+        point.getDottedSecInterval(it->second);
       }
     }
   }
@@ -236,17 +228,11 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
           if (!Finder::FindDirectTransportPackets || checkSegmentActuality(response.sec, FoundPoints.find(bufstr)->second)) {
             // if ipkey will be generated then check for existing of ip segment key at hash map
             if (response.getKeyIp(bufstr)) {
-              // response.getReverseKeyIp(bufstr) -- do not we need process it too?
-              bool isNewIt = false;
-              auto foundIpTimeInterval = FoundPoints.find(bufstr);
+              auto foundIpTimes = FoundPoints.try_emplace(bufstr);
+              if (foundIpTimes.second) foundIpTimes.first->second = std::make_shared<SecMap>();
 
-              if (foundIpTimeInterval == FoundPoints.end()) {
-                foundIpTimeInterval = FoundPoints.insert({ bufstr,  SecMapSPtr(new SecMap) }).first;
-                isNewIt = true;
-              }
-              if (isNewIt || !checkSegmentActuality(response.sec, foundIpTimeInterval->second)) {
-                auto secsIts = response.getDottedSecInterval();
-                for(const auto& secondStamp: secsIts) foundIpTimeInterval->second->insert(secondStamp);
+              if (foundIpTimes.second || !checkSegmentActuality(response.sec, foundIpTimes.first->second)) {
+                response.getDottedSecInterval(foundIpTimes.first->second);
                 ++stat.counterPacketAddedIpFrags;
               }
             }

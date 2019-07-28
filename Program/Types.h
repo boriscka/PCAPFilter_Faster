@@ -28,7 +28,7 @@ struct Statistics
 enum class SessionResult : uint16_t
 {
   NONE = 0,
-  IsWLAN = 1 << 0,
+  SDPEndPoint = 1 << 0,
   IsIPv4 = 1 << 1,
   IsIPv6 = 1 << 2,
   IsUDP = 1 << 3,
@@ -49,7 +49,7 @@ enum class SessionResult : uint16_t
 enum class SessionRequest : uint16_t
 {
   NONE = 0,
-  IsWLAN = 1 << 0,
+  SDPEndPoint = 1 << 0,
   IsIPv4 = 1 << 1,
   IsIPv6 = 1 << 2,
   IsUDP = 1 << 3,
@@ -200,15 +200,21 @@ struct Answer
     return pacnum > 0;
   }
 
-  inline std::vector<uint32_t> getDottedSecInterval() const {
-    std::vector<uint32_t> res;
+  void getKeys(std::vector<std::string>& container, bool ipseg) const {
+    std::string bufstr;
+    if (ipseg && getKeyIp(bufstr))           container.push_back(bufstr);
+    if (getKeyEP(bufstr))           container.push_back(bufstr);
+    if (getReverseKeyEP(bufstr))    container.push_back(bufstr);
+    if (getKeyPacketNumber(bufstr)) container.push_back(bufstr);
+  }
 
-    if (sec == 0) return res;
-
-    uint8_t rangeMax = (SEGMENT_INTERVAL_SEC_LIMIT << 1) | 1;
-    for (uint8_t i = 0; i < rangeMax; ++i) res.push_back(sec + i - SEGMENT_INTERVAL_SEC_LIMIT);
+  inline void getDottedSecInterval(const SecMapSPtr& secsTarget) const {
+    static uint8_t rangeMax = (SEGMENT_INTERVAL_SEC_LIMIT << 1) | 1;
     
-    return res;
+    if (sec == 0) return;
+
+    for (uint8_t i = 0; i < rangeMax; ++i) 
+      secsTarget->insert(sec + i - SEGMENT_INTERVAL_SEC_LIMIT);
   }
 };
 
