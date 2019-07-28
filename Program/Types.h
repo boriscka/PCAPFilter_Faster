@@ -4,6 +4,8 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <memory>
+#include <chrono>
+using namespace std::chrono;
 
 #include "Flags.h"
 #include "UInts.h"
@@ -139,7 +141,7 @@ typedef std::unordered_set<uint32_t> SecMap;
 typedef std::shared_ptr<SecMap> SecMapSPtr;
 typedef std::unordered_map<std::string, SecMapSPtr> FoundPoints;
 
-const uint8_t SEGMENT_INTERVAL_SEC_LIMIT = 2;
+const uint8_t SEGMENT_INTERVAL_SEC_LIMIT = 1;
 
 struct Answer
 {
@@ -152,6 +154,9 @@ struct Answer
   
   bool operator <(const Answer& other) const
   {
+    if (pacnum < other.pacnum) return true;
+    else if (other.pacnum < pacnum) return false;
+    
     if (SRC < other.SRC) return true;
     else if (other.SRC < SRC) return false;
     
@@ -159,9 +164,7 @@ struct Answer
     else if (other.DST < DST) return false;
 
     if (flags < other.flags) return true;
-    else if (other.flags < flags) return false;
-
-    if (pacnum < other.pacnum) return true;
+    
     return false;
   }
 
@@ -226,5 +229,6 @@ struct Request
   uint32_t maxSec = 0;
 };
 
+typedef time_point<high_resolution_clock> ptime;
 
 #endif // !TypesH
