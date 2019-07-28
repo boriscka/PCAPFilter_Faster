@@ -327,7 +327,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
 
     // result log of dropped packets (osi network level)
     if (dropsNetwork.size()) {
-      std::cout << "\r[DROPed network protocols]: ";
+      std::cout << "\n\r[DROPed network protocols]: ";
       bool firstIter = true;
       for (const auto& proto : dropsNetwork) {
         if (firstIter) firstIter = false;
@@ -351,7 +351,7 @@ bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput,
     return true;
   } 
   else {
-    std::cout << "[SEARCH] sessions are not found... Stop. " << std::endl << std::flush;
+    std::cout << "\n[SEARCH] sessions are not found... Stop. " << std::endl << std::flush;
     return false;
   }
 }

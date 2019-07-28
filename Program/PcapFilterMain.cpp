@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 
     bool IsFound = FilterDirect(request, stat, FileNameInput, FileNameOutput);
 
-    std::cout << "read packets:  " << stat.counterPacketRead << std::endl;
+    std::cout << "\nread packets:  " << stat.counterPacketRead << std::endl;
     std::cout << "write packets: " << stat.counterPacketWrite << std::endl << std::flush;
   }
   catch (const std::exception& e) {
@@ -64,6 +64,6 @@ int main(int argc, char **argv)
   }
   ptime endTime = high_resolution_clock::now();
 
-  std::cout << "Total time: " << duration<double>(endTime - startTime).count() << " second(s).\n";
+  std::cout << "\nTotal time: " << duration<double>(endTime - startTime).count() << " second(s).\n\n\r";
   return 0;
 }
