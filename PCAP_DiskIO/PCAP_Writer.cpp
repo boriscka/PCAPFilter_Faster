@@ -58,7 +58,7 @@ void PCAP_Writer::Open(const char *FullPath, TimeType type)
   }
 }
 
-int PCAP_Writer::Write(uint32_t Size, char* Data, uint32_t sec, uint32_t nsec){
+int PCAP_Writer::Write(uint32_t Size, const char* Data, uint32_t sec, uint32_t nsec){
   pcaprec_hdr_t Header;
 
   if (!out.is_open())

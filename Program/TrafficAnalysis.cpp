@@ -115,7 +115,7 @@ inline bool fastFindAnyValue(const char* data, uint64_t dataSize, const PCAP::St
   return false;
 }
 
-bool TrafficAnalysis(uint64_t SizeFrame, const char *Data, const Request& request, Answer& respone, TransportCounterMap* dropsTransportPtr, NetworkCounterMap* dropsNetworkPtr)
+bool isNeededPacket(uint64_t SizeFrame, const char *Data, const Request& request, Answer& respone, TransportCounterMap* dropsTransportPtr, NetworkCounterMap* dropsNetworkPtr)
 {
   using namespace FilterTraffic;
 
@@ -290,5 +290,29 @@ bool TrafficAnalysis(uint64_t SizeFrame, const char *Data, const Request& reques
     respone.flags |= SessionResult::ContainsDesired_ContentData;
   }
   return true;
+}
+
+void logDroppedPkts(const NetworkCounterMap& netPkts, const TransportCounterMap& tranPkts) {
+  if (netPkts.size()) {
+    std::cout << "\n\r[DROPed network protocols]: ";
+    bool firstIter = true;
+    for (const auto& proto : netPkts) {
+      if (firstIter) firstIter = false;
+      else std::cout << ", ";
+      std::cout << "0x" << std::hex << (unsigned int)proto.first << " (" << std::dec << proto.second << ((proto.second > 1) ? " packs)" : " pack)");
+    }
+    std::cout << std::endl << std::flush;
+  }
+  // result log of dropped packets (osi transport level)
+  if (tranPkts.size()) {
+    std::cout << "\r[DROPed transport protocols]: ";
+    bool firstIter = true;
+    for (const auto& proto : tranPkts) {
+      if (firstIter) firstIter = false;
+      else std::cout << ", ";
+      std::cout << "0x" << std::hex << (unsigned int)proto.first << " (" << std::dec << proto.second << ((proto.second > 1) ? " packs)" : " pack)");
+    }
+    std::cout << std::endl << std::flush;
+  }
 }
 

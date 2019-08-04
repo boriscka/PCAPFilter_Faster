@@ -11,7 +11,7 @@ public:
   ~PCAP_Writer();
   void Close();
   void Open(const char * FullPath, TimeType type = TimeType::NanoSecunds);
-  int Write(uint32_t Size, char* Data, uint32_t sec, uint32_t nsec);
+  int Write(uint32_t Size, const char* Data, uint32_t sec, uint32_t nsec);
 
 private:
   std::ofstream out;
