@@ -63,7 +63,7 @@ inline bool fastFindAnyValue(const char* data, uint64_t dataSize, const PCAP::St
     {
       viCur = vi++;
       Size_find = val.length();
-      if (dataSize < Size_find || (valuesIndex[viCur] == 0 && Size_find > (dataSize - i))) continue;
+      if (dataSize < Size_find || ((Size_find - valuesIndex[viCur]) > (dataSize - i))) continue;
 
       if (val.data()[valuesIndex[viCur]] == data[i])
       {
@@ -277,9 +277,7 @@ bool isNeededPacket(uint64_t SizeFrame, const char *Data, const Request& request
       if (dropsTransportPtr) {
         if (dropsTransportPtr->count(ProtocolType) == 0) dropsTransportPtr->emplace(ProtocolType, 0);
         auto it = dropsTransportPtr->find(ProtocolType);
-        if (it != dropsTransportPtr->end() && !((++it->second) % 1000000)) {
-          std::cout << "[DROP][Protocol 0x" << std::hex << (unsigned int)(ProtocolType) << "] count of drops: " << std::dec << it->second << std::endl << std::flush;
-        }
+        if (it != dropsTransportPtr->end()) ++it->second;
       }
       return false;
     }
