@@ -1,3 +1,6 @@
+#ifndef FLAGS_H
+#define FLAGS_H
+
 #include <stdint.h>
 #include <initializer_list>
 
@@ -120,3 +123,5 @@ private:
 #define Flags16(EnumType) Flags<EnumType, uint16_t>
 #define Flags32(EnumType) Flags<EnumType, uint32_t>
 #define Flags64(EnumType) Flags<EnumType, uint64_t>
+
+#endif//FLAGS_H

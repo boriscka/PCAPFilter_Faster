@@ -6,9 +6,9 @@
 #include "../PCAP_DiskIO/PCAP_Reader.h"
 #include "../PCAP_DiskIO/PCAP_Writer.h"
 
-inline bool needToBeWritten(const FoundPoints& foundPoints, const Request& request, const Answer& response, std::string& bufKey);
-inline bool checkSegmentActuality(uint32_t secKey, const SecMapSPtr& secMap);
-inline bool isFound(const Request& request, const Answer& respone);
+bool needToBeWritten(const FoundPoints& foundPoints, const Request& request, const Answer& response, std::string& bufKey);
+bool checkSegmentActuality(uint32_t secKey, const SecMapSPtr& secMap);
+bool isFound(const Request& request, const Answer& respone);
 bool isFound(const Answer& Session, const Answer& respone);
 
 bool FilterDirect(Request& request, Statistics& stat, std::string FileNameInput, std::string FileNameOutput);
@@ -71,7 +71,7 @@ public:
       point.getKeys(keys, !request.flags.TestFlag(SessionRequest::IpFragmentationOff));
 
       for (const std::string& strKey : keys) {
-        auto& it = foundPoints.try_emplace(strKey).first;
+        const auto& it = foundPoints.try_emplace(strKey).first;
         if (!it->second) it->second = std::make_shared<SecMap>();
         point.getDottedSecInterval(it->second);
       }
