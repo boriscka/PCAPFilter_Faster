@@ -10,7 +10,7 @@
 
 bool  Finder::FindDirectTransportPackets = false;
 
-inline bool isFound(const Request& request, const Answer& respone)
+bool isFound(const Request& request, const Answer& respone)
 {
   if (request.minSec != 0 && request.minSec > respone.sec || request.maxSec != 0 && request.maxSec < respone.sec) return false;
   if ((request.flags & SessionRequest::ContainsDesired_ContentData) || (request.flags & SessionRequest::ContainsDesired_ipV4Point)
