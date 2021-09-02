@@ -9,7 +9,7 @@ using namespace std::chrono;
 
 #include "Flags.h"
 #include "UInts.h"
-#include "..\PCAP_DiskIO\PCAP_Common.h"
+#include "../PCAP_DiskIO/PCAP_Common.h"
 
 struct Statistics
 {

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <sstream>
 
+#include "FilterDefines.h"
+
 inline uint16_t Swap16(uint16_t U16)
 {
   union union16
@@ -50,7 +52,8 @@ inline uint64_t Swap64(uint64_t U64)
     dsn.d8[7] = src.d8[0];
   return dsn.d64;
 }
-#pragma pack(push, 1)
+
+PACK_STRUCT_START
 
 constexpr auto INT128_BYTES = 16;
 struct uint128_t {
@@ -158,6 +161,6 @@ private:
   uint8_t num[INT128_BYTES];
 };
 
-#pragma pack(pop)
+PACK_STRUCT_END
 
 #endif // UINTS_H

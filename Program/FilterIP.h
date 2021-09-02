@@ -5,7 +5,8 @@
 
 #include "FilterDefines.h"
 
-namespace FilterTraffic{
+namespace FilterTraffic
+{
 
 union ip4_addr{
   uint32_t ip_32;
@@ -58,3 +59,4 @@ PACK_STRUCT_END
 }
 
 #endif
+

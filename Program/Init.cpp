@@ -3,7 +3,18 @@
 #include "Init.h"
 #include "Types.h"
 
-#include "winsock.h"
+#ifdef __linux__ 
+#include <arpa/inet.h>
+#endif
+#include <ctype.h>
+#ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <WinSock2.h>
+#include <stdio.h>
+#include <windows.h>
+#include <Ws2tcpip.h>
+#include <WS2tcpip.h>
+#endif
 
 uint32_t inet_network_ipv4(const char *cp)
 {

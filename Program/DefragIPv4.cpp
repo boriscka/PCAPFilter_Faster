@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "UInts.h"
 #include "DefragIPv4.h"
 #include "FilterTCPHeader.h"
